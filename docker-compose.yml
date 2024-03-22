@@ -93,6 +93,7 @@ services:
         networks:
             - orderapp_network
 
+    # Prometheus
     s_prometheus:
         container_name: "c_prometheus"
         image: prom/prometheus
@@ -103,6 +104,7 @@ services:
         networks:
             - orderapp_network
 
+    # Grafana
     s_grafana:
         container_name: "c_grafana"
         image: grafana/grafana
@@ -117,6 +119,18 @@ services:
             - GF_USERS_ALLOW_SIGN_UP=false
         networks:
             - orderapp_network
+
+    # SEQ
+    seq:
+        container_name: "c_seq"
+        image: datalust/seq:latest
+        environment:
+          - ACCEPT_EULA=Y
+        ports:
+          - "5341:5341"
+          - "80:80"
+        networks:
+          - orderapp_network
 
 networks:
   orderapp_network:

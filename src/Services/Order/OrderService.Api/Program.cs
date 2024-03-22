@@ -1,6 +1,7 @@
 using OrderService.Infrastructure.Extensions;
 using OrderService.OrderAPI.Configuration;
 using Prometheus;
+using Serilog;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,13 @@ builder.Services.AddDatabaseConfiguration(builder.Configuration);
 
 builder.Services.AddDependencyInjectionConfiguration(builder.Configuration);
 
+// Serilog yapýlandýrmasýný appsettings.json'dan oku
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
 var app = builder.Build();
 
 app.UseHttpMetrics();
@@ -29,6 +37,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.Use(async (context, next) =>
+{
+    Log.Information("Ýstek geldi.");
+    await next();
+});
 
 app.UseAuthorization();
 

@@ -12,6 +12,8 @@ using OrderService.Infrastructure.Extensions;
 using OrderService.Infrastructure.Context;
 using OrderService.Infrastructure.Repositories;
 using System.Reflection;
+using Microsoft.Extensions.Logging;
+using Polly.CircuitBreaker;
 
 namespace OrderService.Infrastructure.IoC
 {
@@ -46,6 +48,11 @@ namespace OrderService.Infrastructure.IoC
 
             //hostedservices
             services.AddHostedService<ConsulHostedService>();
+
+            services.AddSingleton<AsyncCircuitBreakerPolicy>(serviceProvider =>
+            {
+                return CircuitPolicy.CreatePolicy(1, TimeSpan.FromSeconds(30));
+            });
 
             //health check
             services.AddHealthChecks();

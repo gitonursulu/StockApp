@@ -1,0 +1,127 @@
+version: '3.8'
+services:
+    # Gateway Api
+    s_gateway:
+        container_name: "c_gatewayapi"
+        build:
+            context: ./src/Gateway/GatewayService.Api
+            dockerfile: Dockerfile
+        ports:
+            - "5050:8080"
+        environment:
+            ASPNETCORE_ENVIRONMENT: Development
+        networks:
+            - orderapp_network
+   
+    # Order Api
+    s_order:
+        container_name: "c_orderapi"
+        build:
+            context: ./src/Services/Order
+            dockerfile: Dockerfile
+        ports:
+            - "6060:8080"
+        environment:
+            ASPNETCORE_ENVIRONMENT: Development
+        networks:
+            - orderapp_network
+        depends_on:
+            - s_mssql_order
+
+    # MsSQL for OrderApi
+    s_mssql_order:
+        container_name: "c_orderdb"
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        environment:
+            SA_PASSWORD: "123Qwe123."
+            ACCEPT_EULA: "Y"
+        ports:
+            - "1433:1433"
+        volumes:
+            - mssql-data:/var/opt/mssql
+        networks:
+            - orderapp_network
+      
+    # PostgreSQL for Keycloak
+    s_psql_keycloak:
+        container_name: "c_keycloakdb"
+        image: postgres:16-alpine
+        ports:
+            - 5432:5432
+        expose:
+            - 5432
+        volumes:
+            - ./keycloak/data/s_psql_keycloak:/var/lib/postgresql/data
+        restart: always
+        environment:
+            - POSTGRES_PASSWORD=myStrongPassword123
+            - POSTGRES_USER=keycloak
+            - POSTGRES_DB=keycloak
+        networks:
+            - orderapp_network
+
+    # Keycloak
+    s_keycloak:
+        container_name: "c_keycloak"
+        build: ./keycloak
+        command: ["start-dev"]
+        ports:
+            - 4040:8080
+        expose:
+            - 5053
+        environment:
+            - KEYCLOAK_ADMIN=admin
+            - KEYCLOAK_ADMIN_PASSWORD=admin
+            - KC_HOSTNAME_URL=http://localhost:4040/
+            - KC_DB=postgres
+            - KC_DB_USERNAME=keycloak
+            - KC_DB_PASSWORD=myStrongPassword123
+            - KC_DB_URL=jdbc:postgresql://c_keycloakdb:5432/keycloak
+        depends_on: 
+            - s_psql_keycloak
+        networks:
+            - orderapp_network
+    
+    # Consul
+    s_consul:
+        container_name: "c_consul"
+        image: hashicorp/consul
+        ports:
+            - 3030:8500
+            - 3040:8600/tcp
+            - 3040:8600/udp
+        networks:
+            - orderapp_network
+
+    s_prometheus:
+        container_name: "c_prometheus"
+        image: prom/prometheus
+        volumes:
+            - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        ports:
+            - "9090:9090"
+        networks:
+            - orderapp_network
+
+    s_grafana:
+        container_name: "c_grafana"
+        image: grafana/grafana
+        depends_on:
+            - s_prometheus
+        ports:
+            - "3000:3000"
+        volumes:
+            - ./grafana_data:/var/lib/grafana
+        environment:
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+            - GF_USERS_ALLOW_SIGN_UP=false
+        networks:
+            - orderapp_network
+
+networks:
+  orderapp_network:
+    external: true
+
+volumes:
+  mssql-data:
+    driver: local
